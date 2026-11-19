@@ -1,0 +1,51 @@
+# dsh-purge bundle patch
+#
+# 清洗 + 演练台都在本插件内（lib/redteam、presets/redteam、skills/redteam）。
+# 只装 dsh-purge，不外接、不 link 其它红队包。
+
+# Upstream also disables five standalone redteam packages users may have
+# installed before this plugin absorbed them (dsh-redteam-mode and friends).
+# No bundle ships those rows, so patching them here only reports "entry not
+# found"; a user who still has one disables it in their own profile patch.
+
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    personaPrefix: ""
+    personaSuffix: Your working directory is {{cwd}}.
+
+- insert:
+    - id: dsh-purge
+      name: '@deepseek-ai/dsh-purge'
+      inject: [systemPrompt, tools]
+      config:
+        enabled: true
+        autoApplyOnStart: false
+        autoUpdateOnStart: false
+        autoRevertOnMissing: false
+        injectOnce: false
+        stripMnemon: true
+        verbose: false
+        postPrompt: ""
+        postPromptOrder: 5100
+        autoRetry: true
+        retryMax: 3
+        autoContinue: false
+        continueMax: 3
+        continueText: "继续"
+        capabilityProtocol: true
+        hooksDenyBypass: true
+
+    # 演练台：预设 + 技能落地（本插件 lib/redteam）
+    - id: dsh-purge-redteam
+      name: '@deepseek-ai/dsh-purge/redteam'
+
+    # 演练台事实库（SQLite），数据在 $DSH_HOME/redteam
+    - id: dsh-purge-redteam-store
+      name: '@deepseek-ai/dsh-purge/redteam/store'
+      config:
+        root: !!js dshHomePath('redteam')
+
+    # 演练台 HTTP 桥 POST /redteam/api
+    - id: dsh-purge-redteam-ui
+      name: '@deepseek-ai/dsh-purge/redteam/ui'

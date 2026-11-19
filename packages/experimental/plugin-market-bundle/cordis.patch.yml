@@ -1,0 +1,4 @@
+# This edition mounts plugin-market and ui-plugin-market from the web-app
+# bundle, including a default community index. The optional bundle stays
+# installable and adds no second copy of those rows.
+[]

@@ -1,0 +1,126 @@
+---
+description: "本版本 DeepSeek Harness 主目录与 agent 配置根目录的解析，以及用户数据路径、pnpm 隔离、波浪号展开与稳定监听路径。"
+kind: "package-library"
+---
+
+# @deepseek-ai/dsh-home-paths
+
+[English](README.md) | 中文
+
+## 概述
+
+`@deepseek-ai/dsh-home-paths` 让包作者能够解析本版本的 DeepSeek Harness 数据根目录与 agent 配置根目录。显式路径优先于本版本环境变量，后者优先于操作系统主目录下的默认值；空白环境变量会被忽略。其公开辅助函数可以在不暴露机器绝对路径的情况下显示根目录，仅展开单独或当前用户的波浪号形式，规范化最终路径段尚不存在的监听目标，并把 pnpm 状态保留在本版本主目录下。请把它作为库依赖直接使用，不要通过 `cordis.yml` 加载。
+
+## 目录
+
+- [使用本包](#use-this-package)
+- [理解实现](#understand-the-implementation)
+- [进一步探索](#further-exploration)
+- [已知限制与延期工作](#known-limitations-and-deferred-work)
+- [开发备注](#dev-note)
+
+-----
+
+<a id="use-this-package"></a>
+## 使用本包
+
+当包必须与 harness 的其他部分就用户数据存放位置达成一致时使用这些辅助函数：先解析一次主目录，再从中派生所有子路径。
+
+### 解析主目录
+
+```ts
+import { resolveDshHome, dshHomePath, dshCachePath } from '@deepseek-ai/dsh-home-paths'
+
+const home = resolveDshHome()                // configured path, else $DSHS_HOME, else ~/.dshs
+const settings = dshHomePath('settings')     // join one child onto the resolved home
+const cache = dshCachePath('models')         // $DSHS_HOME/cache/models, default ~/.dshs/cache/models
+```
+
+显式配置的路径优先级最高，然后是 `$DSHS_HOME`，最后是默认的 `~/.dshs`。空或仅含空白的 `$DSHS_HOME` 视为未设置，因此空白的覆盖值绝不会把主目录解析到当前工作目录。本版本不读取 `$DSH_HOME`，因此为官方 `dsh` 导出该变量的安装仍使用自己的主目录。
+
+`dshCachePath(...segments)` 从解析出的主目录下的 `cache` 目录派生路径。不传路径段时返回缓存目录本身。传入首个选项对象 `dshCachePath({ dshHome: home }, ...segments)` 可使用显式配置的主目录，遵循相同的优先级与波浪号展开规则。它返回绝对路径，不会创建目录。
+
+### 解析 agents 根目录
+
+```ts
+import { resolveAgentsHome, agentsHomeDisplay, pnpmEnvironment } from '@deepseek-ai/dsh-home-paths'
+
+const agents = resolveAgentsHome()   // configured path, else $DSHS_AGENTS_HOME, else ~/.dshs/agents
+agentsHomeDisplay(agents)            // ~/.dshs/agents, or $DSHS_AGENTS_HOME for any configured root
+const env = pnpmEnvironment()        // pnpm and npm roots under $DSHS_HOME
+```
+
+`resolveAgentsHome` 采用与 `resolveDshHome` 相同的优先级、空白值处理与波浪号展开。默认值是 `$DSHS_HOME/agents`，因此本版本不读取官方 `$DSH_AGENTS_HOME` 或 `~/.agents` 中的数据。`dsh-agent-instructions` 读取其中的用户全局 `AGENTS.md`，`dsh-skill-filesystem` 扫描其中的 `skills/` 目录。
+
+`pnpmEnvironment` 把 npm/pnpm 的 store、缓存、状态、全局安装与用户配置路径覆盖为 `$DSHS_HOME/pnpm` 和 `$DSHS_HOME/cache/pnpm` 的子目录。因此包管理凭据与下载内容不会进入官方 dsh 或账户级 pnpm 状态。
+
+### 展示主目录
+
+面向用户的路径请以符号形式渲染根目录，而不是机器路径：默认主目录显示为 `~/.dshs`，任何已配置的主目录显示为 `$DSHS_HOME`，默认 agents 根目录显示为 `~/.dshs/agents`，任何已配置的 agents 根目录显示为 `$DSHS_AGENTS_HOME`。两种展示形式都不会泄露机器的绝对路径。
+
+### 展开用户路径
+
+`expandHomePath` 针对操作系统主目录展开开头的 `~`、`~/` 或 `~\`，其余内容原样保留——非波浪号路径以及 `~alice/...` 等指定用户的形式不做任何改动。
+
+### 规范化监听路径
+
+`canonicalizeWatchPath` 为原生文件系统 watcher 提供目标路径的一种规范化写法：先通过 `realpath` 解析层级最深的现有祖先，再拼回缺失的后缀，因此文件或目录在创建之前就可以被监听。这可以防止 Windows 把普通文件祖先当作普通缺失处理，也防止 8.3 短名别名与原生 watcher 后端发出的长路径混用。
+
+-----
+
+<a id="understand-the-implementation"></a>
+## 理解实现
+
+<details>
+<summary>实现细节——点击展开</summary>
+
+本包建立在一个原则上：本版本拥有的全部状态都位于 `$DSHS_HOME` 下。`resolveRoot` 与 `rootDisplay` 负责两个数据根目录的优先级与展示规则，因此两者不会彼此漂移。
+
+### 源码地图
+
+| 文件 | 职责 |
+|---|---|
+| [`src/index.ts`](src/index.ts) | 主目录与 agents 解析、pnpm 环境、路径拼接、展示、波浪号展开与监听路径规范化 |
+
+### 解析规则
+
+`resolveDshHome` 先读显式覆盖值，然后读 `$DSHS_HOME`，最后回退到操作系统主目录拼接 `.dshs`。它不读取 `$DSH_HOME`。`resolveAgentsHome` 对 `$DSHS_AGENTS_HOME` 与 `~/.dshs/agents` 读取同样的三层值；它不读取 `$DSH_AGENTS_HOME`。选中的值经过波浪号展开并规范化为绝对路径；`dshHomePath` 用 Node 的平台路径规则拼接子路径段。`dshHomeDisplay` 与 `agentsHomeDisplay` 把解析出的路径与默认根目录比较并返回符号标签，因此已配置的根目录绝不泄露其绝对路径。
+
+### 规范化机制
+
+`canonicalizeWatchPath` 从目标向上逐级查找，直到找到现有祖先，用 `realpath` 解析它、证明它是可枚举目录，再拼回缺失的后缀。除路径不存在以外的错误都会传播；缺失后缀的祖先若不是目录则被拒绝。
+
+</details>
+
+-----
+
+<a id="further-exploration"></a>
+## 进一步探索
+
+当你需要启动器或依赖统一主目录根的消费方时，阅读以下页面。
+
+- [boot 包](../../boot/app-boot/README.zh.md)——在任何插件挂载之前解析主目录的启动器。
+- [shell 环境](../../shell/shell-env/README.zh.md)——`DSHS_HOME` 如何到达模型 shell 调用。
+- [匿名用户 id](../../identity/anonymous-user-id/README.zh.md)——位于解析后主目录下的存储身份文件。
+
+-----
+
+## 已知限制与延期工作
+
+<a id="known-limitations-and-deferred-work"></a>
+
+
+这些限制说明这些辅助函数何时不是合适的工具。它们是当前包约束，不是任务积压。
+
+- **展开范围刻意保持狭窄**——只有单独的 `~`、`~/...` 和 `~\...` 使用当前操作系统主目录；`~alice/...` 等指定用户的形式、环境变量与 shell 表达式保持不变。
+- **规范化只读不改**——`canonicalizeWatchPath` 执行 `realpath` 探测并传播除路径不存在以外的错误；调用方仍负责目录创建、权限，以及对结果路径应用信任策略。
+
+<a id="dev-note"></a>
+### 开发备注
+
+<details>
+<summary>维护者的工作上下文——点击展开</summary>
+
+无。
+
+</details>
