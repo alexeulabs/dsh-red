@@ -77,7 +77,7 @@
     "@deepseek-ai/dsh-personalized-recommendations": "workspace:*",
     "@deepseek-ai/dsh-plan-mode": "workspace:*",
     "@deepseek-ai/dsh-plugin-manager": "workspace:*",
-    "@deepseek-ai/dsh-purge": "workspace:~",
+    "@deepseek-ai/dsh-purge": "workspace:*",
     "@deepseek-ai/dsh-pwsh-local": "workspace:*",
     "@deepseek-ai/dsh-pwsh-sandbox": "workspace:*",
     "@deepseek-ai/dsh-schedule": "workspace:*",

@@ -64,6 +64,9 @@ function runtimeFiles(root: string): { path: string; name: string }[] {
       const path = join(directory, entry.name)
       const name = relative(root, path).split(sep).join('/')
       if (name === DESKTOP_RUNTIME_FILE) continue
+      // electron-builder drops placeholder files like .gitkeep when it assembles the ASAR,
+      // so keeping them in the inventory makes every packaged build disagree with it.
+      if (entry.name === '.gitkeep') continue
       if (entry.isDirectory()) visit(path)
       else if (entry.isFile()) files.push({ path, name })
       else throw new Error(`desktop runtime: unsupported filesystem entry ${name}`)

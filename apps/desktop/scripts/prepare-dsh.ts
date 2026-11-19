@@ -86,6 +86,10 @@ function runPnpm(args: readonly string[]): Promise<void> {
       '--config.verify-store-integrity=true',
       '--config.package-import-method=copy',
       '--config.enable-global-virtual-store=false',
+      // The runtime install is not this repository's workspace, so it has no allowBuilds
+      // decision for ssh2 and cpu-features; their scripts only build an optional native
+      // accelerator that ssh2 does without. Strict dependency builds would fail the install.
+      '--config.strict-dep-builds=false',
       `--config.userconfig=${userConfig}`,
       command,
       ...commandArgs,

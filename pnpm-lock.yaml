@@ -436,7 +436,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/boot/plugin-manager
       '@deepseek-ai/dsh-purge':
-        specifier: workspace:~
+        specifier: workspace:*
         version: link:../../vendor/dsh-purge
       '@deepseek-ai/dsh-pwsh-local':
         specifier: workspace:*
@@ -740,7 +740,7 @@ importers:
         specifier: workspace:*
         version: link:../../packages/api/gateway
       '@deepseek-ai/dsh-purge':
-        specifier: workspace:~
+        specifier: workspace:*
         version: link:../../vendor/dsh-purge
       '@linxin666/dsh-ssh':
         specifier: ^0.4.18
@@ -3272,7 +3272,7 @@ importers:
         specifier: workspace:*
         version: link:../../boot/plugin-market
       '@deepseek-ai/dsh-purge':
-        specifier: workspace:~
+        specifier: workspace:*
         version: link:../../../vendor/dsh-purge
       '@deepseek-ai/dsh-schedule':
         specifier: workspace:*
