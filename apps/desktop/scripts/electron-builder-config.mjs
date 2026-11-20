@@ -3,7 +3,8 @@ import { officePackageDirectories } from '../../../scripts/libreoffice-packages.
 import { X509Certificate } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { readFile, writeFile } from 'node:fs/promises'
-import { join, relative, sep } from 'node:path'
+import { join, relative, sep, dirname } from 'node:path'
+import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -34,6 +35,14 @@ import {
   verifyMacOSAppUpdateConfig,
   writeMacOSAppUpdateConfig,
 } from './macos-app-update-config.mjs'
+
+/** Physical directories of the packages electron-updater requires at runtime. */
+const updaterDependencyDirectories = (() => {
+  const requireFromHere = createRequire(import.meta.url)
+  const jsYaml = dirname(requireFromHere.resolve('js-yaml/package.json'))
+  // pnpm keeps a package's own dependencies beside it, not at the application root.
+  return { jsYaml, argparse: join(dirname(jsYaml), 'argparse') }
+})()
 
 /**
  * Create electron-builder configuration from one release environment.
@@ -159,6 +168,11 @@ export function createElectronBuilderConfig(
       { from: buildPaths.dsh, to: 'dsh', filter: ['**/*'] },
       // electron-builder excludes a source directory's root node_modules.
       { from: join(buildPaths.dsh, 'node_modules'), to: 'dsh/node_modules', filter: ['**/*'] },
+      // electron-updater is loaded from the application ASAR and requires js-yaml at runtime.
+      // Its dependency collector follows a pnpm symbolic link for neither package, so both are
+      // mounted at the paths a plain Node resolution from electron-updater looks in.
+      { from: updaterDependencyDirectories.jsYaml, to: 'node_modules/js-yaml', filter: ['**/*'] },
+      { from: updaterDependencyDirectories.argparse, to: 'node_modules/argparse', filter: ['**/*'] },
     ],
     asarUnpack: unpack,
     extraResources: [
