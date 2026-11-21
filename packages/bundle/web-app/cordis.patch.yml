@@ -661,7 +661,10 @@
   config:
     includeHarnessIdentity: false
     personaPrefix: ""
-    personaSuffix: Your working directory is {{cwd}}.
+    # The prompt-variable registry only carries `provider` and `model`, so a
+    # `{{cwd}}` template here fails every turn. The path arrives through the
+    # working-directory context instead.
+    personaSuffix: Work within the current session working directory.
 
 - insert:
     - id: dsh-purge
