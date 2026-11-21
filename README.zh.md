@@ -202,28 +202,6 @@ FOFA Key 与 VPS 登录信息在**设置 → 演练台**里填，写到 `~/.dshs
 | 技能 | `~/.dshs/skills` |
 | 插件 profile | `~/.dshs/profiles` |
 
-<a id="migrate"></a>
-
-## 从官方 dsh 迁移会话
-
-两版写同一套目录布局，因此迁移是复制文件，不做格式转换。
-
-```sh
-node tools/import-dsh-sessions.mjs --dry-run   # 先看会复制什么
-node tools/import-dsh-sessions.mjs             # 执行
-```
-
-默认从 `~/.dsh` 复制到 `~/.dshs`，可用 `--from <目录>` 改源、`--sessions-only` 或 `--attachments-only` 只迁一项。
-
-几点保证：
-
-- **只复制，不移动**：官方安装继续可用，仍是新会话的来源
-- **幂等**：重复运行只补缺失项，不覆盖已有会话
-- **一个会话只取最新格式**：跨格式升级的会话在源里留着新旧两代文件，只复制最高版本，避免列表重复
-- **附件按 SHA-256 内容寻址**：与 home 无关，整目录复制即可
-
-迁移后会话仍归在原来的项目分组下，因为分组键由会话里保存的绝对 `cwd` 算出，两版算法一致。
-
 <a id="development"></a>
 
 ## 开发
