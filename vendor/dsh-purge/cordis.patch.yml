@@ -12,7 +12,8 @@
   config:
     includeHarnessIdentity: false
     personaPrefix: ""
-    personaSuffix: Your working directory is {{cwd}}.
+    # The persona-suffix section has no prompt variables; working-directory:current carries the path.
+    personaSuffix: Work within the current session working directory.
 
 - insert:
     - id: dsh-purge
